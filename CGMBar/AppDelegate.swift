@@ -14,28 +14,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusBarItem: NSStatusItem!
     var statusBarMenu: NSMenu!
     var updateTimer: Timer!
-
+    
+    var lastUpdateDate: Date!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         self.statusBarItem = NSStatusBar.system.statusItem(withLength: CGFloat(NSStatusItem.variableLength))
 
         self.statusBarMenu = NSMenu(title: "CGMBar")
-
-        self.statusBarMenu = NSMenu()
         if let menu = self.statusBarMenu {
+            menu.addItem(withTitle: "Last updated: unknown", action: nil, keyEquivalent: "")
             menu.addItem(withTitle: "Update Now", action: #selector(updateBar), keyEquivalent: "u")
             menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
             menu.delegate = self
         }
-
 
         if let button = self.statusBarItem.button {
              //button.image = NSImage(named: "Icon")
             button.action = #selector(onClick)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
-
-        //self.statusBarItem.button?.menu = statusBarMenu
 
         self.updateTimer = Timer.scheduledTimer(timeInterval: 30.0, target: self, selector: #selector(updateBar), userInfo: nil, repeats: true)
 
@@ -49,6 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let event = NSApp.currentEvent!
         
         if event.type == NSEvent.EventType.rightMouseUp {
+            self.updateStatusBarMenu()
             statusBarItem.menu = statusBarMenu
             statusBarMenu.popUp(positioning: nil,
                                 at: NSPoint(x: 0, y: statusBarItem.statusBar!.thickness),
@@ -61,6 +59,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     @objc func menuDidClose(_ menu: NSMenu) {
         statusBarItem.menu = nil
+    }
+    
+    @objc func updateStatusBarMenu() {
+        if let item = statusBarMenu.item(at: 0) {
+            let last = buildAge(date: lastUpdateDate, always: true)
+            item.title = "Last updated: \(last)"
+        }
     }
     
     struct SGVReading: Decodable {
@@ -134,26 +139,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
-    func buildAge(epoch: Int) -> String {
+    func buildDate(epoch: Int) -> Date {
         let date = Date(timeIntervalSince1970: TimeInterval(epoch/1000))
-        let diffComponents = Calendar.current.dateComponents([.hour, .minute], from: Date(), to: date)
+        return date
+    }
+    
+    func buildAge(date: Date, always: Bool) -> String {
+        let diffComponents = Calendar.current.dateComponents([.hour, .minute], from: date, to: Date())
         let m = diffComponents.minute!
         let h = diffComponents.hour!
         if h > 0 {
-            return "\(h)h \(m)m"
-        } else if m > 5 {
+            return "\(h)h\(m)m"
+        } else if m > 5 || always {
             return "\(m)m"
         } else {
             return ""
         }
-
-
     }
     
     func buildBarTitle(reading: SGVReading) -> String {
+        let date: Date = buildDate(epoch: reading.date)
+        self.lastUpdateDate = date
+        
         let arrow: String = buildArrow(direction: reading.direction)
         let delta: String = buildDelta(delta: reading.delta)
-        let age: String = buildAge(epoch: reading.date)
+        let age: String = buildAge(date: date, always: false)
         return "\(reading.sgv) \(arrow) \(delta) \(age)"
     }
 
