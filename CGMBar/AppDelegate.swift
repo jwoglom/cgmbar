@@ -10,12 +10,17 @@ import SwiftUI
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-
+    
     var statusBarItem: NSStatusItem!
     var statusBarMenu: NSMenu!
-    var updateTimer: Timer!
+    var settingsMenu: NSMenu!
     
+    var updateTimer: Timer!
     var lastUpdateDate: Date!
+    
+    enum PreferenceField : String {
+        case nightscoutUrl
+    }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         self.statusBarItem = NSStatusBar.system.statusItem(withLength: CGFloat(NSStatusItem.variableLength))
@@ -24,7 +29,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let menu = self.statusBarMenu {
             menu.addItem(withTitle: "Last updated: unknown", action: nil, keyEquivalent: "")
             menu.addItem(withTitle: "Update Now", action: #selector(updateBar), keyEquivalent: "u")
+            menu.addItem(withTitle: "Settings", action: nil, keyEquivalent: "s")
             menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+            
+            
+            settingsMenu = NSMenu(title: "Settings")
+            settingsMenu.addItem(withTitle: "Nightscout URL", action: #selector(settingsNightscoutUrl), keyEquivalent: "")
+            
+            menu.setSubmenu(settingsMenu, for: menu.item(withTitle: "Settings")!)
             menu.delegate = self
         }
 
@@ -68,6 +80,57 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
+    func getPref(key: PreferenceField) -> String? {
+        let defaults = UserDefaults.standard
+
+        return defaults.object(forKey: key.rawValue) as? String
+    }
+    
+    func setPref(key: PreferenceField, val: String) {
+        let defaults = UserDefaults.standard
+        defaults.set(val, forKey: key.rawValue)
+    }
+    
+    @objc func settingsNightscoutUrl() {
+        let retVal = askForString(title: "Settings", question: "Enter Nightscout URL:", defaultValue: getPref(key: PreferenceField.nightscoutUrl) ?? "")
+        if retVal != nil {
+            setPref(key: PreferenceField.nightscoutUrl, val: retVal!)
+        }
+    }
+    
+    func askForString(title: String, question: String, defaultValue: String) -> String? {
+        let alert = NSAlert()
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Cancel")
+        alert.messageText = title
+        alert.informativeText = question
+        
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        field.stringValue = defaultValue
+        
+        alert.accessoryView = field
+        
+        let response: NSApplication.ModalResponse = alert.runModal()
+        if (response == NSApplication.ModalResponse.alertFirstButtonReturn) {
+            return field.stringValue
+        } else {
+            return nil
+        }
+    }
+    
+    func getBaseNightscoutUrl() -> String {
+        var pref = getPref(key: PreferenceField.nightscoutUrl) ?? "http://localhost"
+        if pref.hasSuffix("/") {
+            pref.removeLast(1)
+        }
+        
+        if pref.hasSuffix("/api/v1") {
+            pref.removeLast(7)
+        }
+        
+        return pref
+    }
+    
     struct SGVReading: Decodable {
         let _id: String
         let device: String
@@ -86,7 +149,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 button.title = "..."
             }
         }
-        let url = URL(string: "http://127.0.0.1:1337/api/v1/entries/sgv.json?count=1")!
+        let url = URL(string: getBaseNightscoutUrl() + "/api/v1/entries/sgv.json?count=1")!
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
             guard let data = data else { return }
