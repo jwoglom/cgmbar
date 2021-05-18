@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case nightscoutUrl
         case statusBarShowDelta
         case statusBarAlwaysShowAge
+        case statusBarUseColor
     }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
@@ -39,6 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settingsMenu.addItem(withTitle: "Set Nightscout URL", action: #selector(settingsNightscoutUrl), keyEquivalent: "")
             settingsMenu.addItem(withTitle: "Show Delta", action: #selector(settingsShowDelta), keyEquivalent: "")
             settingsMenu.addItem(withTitle: "Always Show Age", action: #selector(settingsAlwaysShowAge), keyEquivalent: "")
+            settingsMenu.addItem(withTitle: "Use Color", action: #selector(settingsUseColor), keyEquivalent: "")
             updateCheckboxSettings()
             
             menu.setSubmenu(settingsMenu, for: menu.item(withTitle: "Settings")!)
@@ -111,6 +113,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         changeCheckboxSetting(pref: PreferenceField.statusBarAlwaysShowAge)
     }
     
+    @objc func settingsUseColor() {
+        changeCheckboxSetting(pref: PreferenceField.statusBarUseColor)
+    }
+    
     func changeCheckboxSetting(pref: PreferenceField) {
         if getCheckboxSetting(pref: pref) {
             setPref(key: pref, val: "false")
@@ -124,6 +130,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func updateCheckboxSettings() {
         updateCheckboxSetting(menu: settingsMenu, title: "Show Delta", pref: PreferenceField.statusBarShowDelta)
         updateCheckboxSetting(menu: settingsMenu, title: "Always Show Age", pref: PreferenceField.statusBarAlwaysShowAge)
+        updateCheckboxSetting(menu: settingsMenu, title: "Use Color", pref: PreferenceField.statusBarUseColor)
     }
     
     func updateCheckboxSetting(menu: NSMenu, title: String, pref: PreferenceField) {
@@ -199,17 +206,57 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             
             print(sgvs)
             
-            let title: String = self.buildBarTitle(reading: sgvs[0])
+            let title: NSAttributedString = self.buildBarTitle(reading: sgvs[0])
             print(title)
             
             if let button = self.statusBarItem.button {
                 DispatchQueue.main.async {
-                    button.title = title
+                    button.attributedTitle = title
+                    
                 }
             }
         }
         
         task.resume()
+    }
+    
+    func clr(s: String, c: NSColor) -> NSAttributedString {
+        return NSAttributedString(string: s, attributes: [
+            NSAttributedString.Key.foregroundColor: c
+        ])
+    }
+    
+    func colorFromSgv(s: String, sgv: Int) -> NSAttributedString {
+        if getCheckboxSetting(pref: PreferenceField.statusBarUseColor) {
+            if sgv < 80 {
+                return clr(s: s, c: NSColor.red)
+            } else if sgv >= 180 {
+                return clr(s: s, c: NSColor.orange)
+            } else {
+                return clr(s: s, c: NSColor.green)
+            }
+        }
+        return NSAttributedString(string: s)
+    }
+    
+    func colorFromDelta(s: String, delta: Double) -> NSAttributedString {
+        if getCheckboxSetting(pref: PreferenceField.statusBarUseColor) {
+            if abs(delta) >= 12 {
+                return clr(s: s, c: NSColor.red)
+            } else if abs(delta) >= 8  {
+                return clr(s: s, c: NSColor.orange)
+            }
+        }
+        return NSAttributedString(string: s)
+    }
+    
+    func colorFromAge(s: String, date: Date) -> NSAttributedString {
+        if getCheckboxSetting(pref: PreferenceField.statusBarUseColor) {
+            if isAgeOld(date: date) {
+                return clr(s: s, c: NSColor.orange)
+            }
+        }
+        return NSAttributedString(string: s)
     }
     
     func buildArrow(direction: String) -> String {
@@ -255,6 +302,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return h > 0 || m > 5
     }
     
+    func shouldShowAge(date: Date) -> Bool {
+        return getCheckboxSetting(pref: PreferenceField.statusBarAlwaysShowAge) || isAgeOld(date: date)
+    }
+    
     func buildAge(date: Date) -> String {
         let diffComponents = Calendar.current.dateComponents([.hour, .minute], from: date, to: Date())
         let m = diffComponents.minute!
@@ -266,7 +317,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
-    func buildBarTitle(reading: SGVReading) -> String {
+    func buildBarTitle(reading: SGVReading) -> NSAttributedString {
         let date: Date = buildDate(epoch: reading.date)
         self.lastUpdateDate = date
         
@@ -274,13 +325,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let delta: String = buildDelta(delta: reading.delta)
         let age: String = buildAge(date: date)
         
-        var fmt = "\(reading.sgv) \(arrow)"
+        let fmt = NSMutableAttributedString()
+        
+        fmt.append(colorFromSgv(s: "\(reading.sgv) \(arrow)", sgv: reading.sgv))
+        
         if getCheckboxSetting(pref: PreferenceField.statusBarShowDelta) {
-            fmt += " \(delta)"
+            fmt.append(colorFromDelta(s: " \(delta)", delta: reading.delta))
         }
         
-        if getCheckboxSetting(pref: PreferenceField.statusBarAlwaysShowAge) || isAgeOld(date: date) {
-            fmt += " \(age)"
+        if shouldShowAge(date: date) {
+            fmt.append(colorFromAge(s: " \(age)", date: date))
         }
         
         return fmt
