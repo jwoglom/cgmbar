@@ -20,6 +20,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     enum PreferenceField : String {
         case nightscoutUrl
+        case statusBarShowDelta
+        case statusBarAlwaysShowAge
     }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
@@ -34,7 +36,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             
             
             settingsMenu = NSMenu(title: "Settings")
-            settingsMenu.addItem(withTitle: "Nightscout URL", action: #selector(settingsNightscoutUrl), keyEquivalent: "")
+            settingsMenu.addItem(withTitle: "Set Nightscout URL", action: #selector(settingsNightscoutUrl), keyEquivalent: "")
+            settingsMenu.addItem(withTitle: "Show Delta", action: #selector(settingsShowDelta), keyEquivalent: "")
+            settingsMenu.addItem(withTitle: "Always Show Age", action: #selector(settingsAlwaysShowAge), keyEquivalent: "")
+            updateCheckboxSettings()
             
             menu.setSubmenu(settingsMenu, for: menu.item(withTitle: "Settings")!)
             menu.delegate = self
@@ -48,7 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         self.updateTimer = Timer.scheduledTimer(timeInterval: 30.0, target: self, selector: #selector(updateBar), userInfo: nil, repeats: true)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(300)) {
+        DispatchQueue.main.asyncAfter(deadline: .now()) {
             self.updateBar()
         }
 
@@ -75,7 +80,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     @objc func updateStatusBarMenu() {
         if let item = statusBarMenu.item(at: 0) {
-            let last = buildAge(date: lastUpdateDate, always: true)
+            let last = buildAge(date: lastUpdateDate)
             item.title = "Last updated: \(last)"
         }
     }
@@ -96,6 +101,41 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if retVal != nil {
             setPref(key: PreferenceField.nightscoutUrl, val: retVal!)
         }
+    }
+    
+    @objc func settingsShowDelta() {
+        changeCheckboxSetting(pref: PreferenceField.statusBarShowDelta)
+    }
+    
+    @objc func settingsAlwaysShowAge() {
+        changeCheckboxSetting(pref: PreferenceField.statusBarAlwaysShowAge)
+    }
+    
+    func changeCheckboxSetting(pref: PreferenceField) {
+        if getCheckboxSetting(pref: pref) {
+            setPref(key: pref, val: "false")
+        } else {
+            setPref(key: pref, val: "true")
+        }
+        updateCheckboxSettings()
+        updateBar()
+    }
+    
+    func updateCheckboxSettings() {
+        updateCheckboxSetting(menu: settingsMenu, title: "Show Delta", pref: PreferenceField.statusBarShowDelta)
+        updateCheckboxSetting(menu: settingsMenu, title: "Always Show Age", pref: PreferenceField.statusBarAlwaysShowAge)
+    }
+    
+    func updateCheckboxSetting(menu: NSMenu, title: String, pref: PreferenceField) {
+        var val = NSControl.StateValue.off
+        if getCheckboxSetting(pref: pref) {
+            val = NSControl.StateValue.on
+        }
+        menu.item(withTitle: title)?.state = val
+    }
+    
+    func getCheckboxSetting(pref: PreferenceField) -> Bool {
+        return getPref(key: pref) ?? "false" == "true"
     }
     
     func askForString(title: String, question: String, defaultValue: String) -> String? {
@@ -207,16 +247,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return date
     }
     
-    func buildAge(date: Date, always: Bool) -> String {
+    func isAgeOld(date: Date) -> Bool {
+        let diffComponents = Calendar.current.dateComponents([.hour, .minute], from: date, to: Date())
+        let h = diffComponents.hour!
+        let m = diffComponents.minute!
+        
+        return h > 0 || m > 5
+    }
+    
+    func buildAge(date: Date) -> String {
         let diffComponents = Calendar.current.dateComponents([.hour, .minute], from: date, to: Date())
         let m = diffComponents.minute!
         let h = diffComponents.hour!
         if h > 0 {
             return "\(h)h\(m)m"
-        } else if m > 5 || always {
-            return "\(m)m"
         } else {
-            return ""
+            return "\(m)m"
         }
     }
     
@@ -226,8 +272,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         
         let arrow: String = buildArrow(direction: reading.direction)
         let delta: String = buildDelta(delta: reading.delta)
-        let age: String = buildAge(date: date, always: false)
-        return "\(reading.sgv) \(arrow) \(delta) \(age)"
+        let age: String = buildAge(date: date)
+        
+        var fmt = "\(reading.sgv) \(arrow)"
+        if getCheckboxSetting(pref: PreferenceField.statusBarShowDelta) {
+            fmt += " \(delta)"
+        }
+        
+        if getCheckboxSetting(pref: PreferenceField.statusBarAlwaysShowAge) || isAgeOld(date: date) {
+            fmt += " \(age)"
+        }
+        
+        return fmt
     }
 
 }
