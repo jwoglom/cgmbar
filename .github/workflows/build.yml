@@ -16,12 +16,17 @@ jobs:
         
       - name: Show Files
         run: find .
+        
+      - name: Copy unsigned app
+        run: |
+          mkdir $RUNNER_TEMP/unsigned_app
+          cp -r build/Release/CGMBar.app $RUNNER_TEMP/unsigned_app/
 
       - name: Upload Unsigned app
         uses: actions/upload-artifact@v1
         with:
           name: CGMBar-unsigned
-          path: build/Release/CGMBar.app
+          path: $RUNNER_TEMP/unsigned_app/
           
       - name: Install certificate
         env:
@@ -50,8 +55,14 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD $KEYCHAIN_PATH
           /usr/bin/codesign --force -s $CERTIFICATE_ID ./build/Release/CGMBar.app -v
 
+
+      - name: Copy signed app
+        run: |
+          mkdir $RUNNER_TEMP/signed_app
+          cp -r build/Release/CGMBar.app $RUNNER_TEMP/signed_app/
+
       - name: Upload Signed app
         uses: actions/upload-artifact@v1
         with:
           name: CGMBar-signed
-          path: build/Release/CGMBar.app
+          path: $RUNNER_TEMP/signed_app/
