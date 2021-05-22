@@ -16,7 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var settingsMenu: NSMenu!
     
     var updateTimer: Timer!
-    var lastUpdateDate: Date!
+    var lastUpdateDate: Date! = Date()
     
     enum PreferenceField : String {
         case nightscoutUrl
