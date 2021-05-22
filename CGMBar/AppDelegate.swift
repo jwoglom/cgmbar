@@ -105,6 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if retVal != nil {
             setPref(key: .nightscoutUrl, val: retVal!)
         }
+        updateNightscoutCheckbox(menu: settingsMenu)
     }
     
     @objc func settingsShowDelta() {
@@ -138,6 +139,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateCheckboxSetting(menu: settingsMenu, title: "Always Show Age", pref: .statusBarAlwaysShowAge)
         updateCheckboxSetting(menu: settingsMenu, title: "Use Color", pref: .statusBarUseColor)
         updateCheckboxSetting(menu: settingsMenu, title: "Use Green Color", pref: .statusBarUseGreenColor)
+        updateNightscoutCheckbox(menu: settingsMenu)
     }
     
     func updateCheckboxSetting(menu: NSMenu, title: String, pref: PreferenceField) {
@@ -146,6 +148,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             val = NSControl.StateValue.on
         }
         menu.item(withTitle: title)?.state = val
+    }
+    
+    func updateNightscoutCheckbox(menu: NSMenu) {
+        var val = NSControl.StateValue.off
+        if getBaseNightscoutUrl() != "" {
+            val = NSControl.StateValue.on
+        }
+        menu.item(withTitle: "Set Nightscout URL")?.state = val
     }
     
     func getCheckboxSetting(pref: PreferenceField) -> Bool {
@@ -173,7 +183,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     func getBaseNightscoutUrl() -> String {
-        var pref = getPref(key: .nightscoutUrl) ?? "invalid"
+        var pref = getPref(key: .nightscoutUrl) ?? ""
         if pref.hasSuffix("/") {
             pref.removeLast(1)
         }
@@ -200,10 +210,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         print("Running updateBar")
 
         let nsUrl = getBaseNightscoutUrl()
-        if nsUrl == "invalid" {
+        if nsUrl == "" {
             if let button = self.statusBarItem.button {
                 DispatchQueue.main.async {
-                    button.attributedTitle = self.clr(s: "No NS URL", c: NSColor.red)
+                    button.attributedTitle = self.clr(s: "Right-click to set NS URL", c: NSColor.red)
                     return
                 }
             }
