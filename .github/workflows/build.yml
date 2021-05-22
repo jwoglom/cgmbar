@@ -22,7 +22,7 @@ jobs:
         with:
           name: CGMBar-unsigned
           path: build/Release/CGMBar.app
-
+           
       - name: Read certificate
         id: write_file
         uses: timheuer/base64-to-file@v1
@@ -31,13 +31,12 @@ jobs:
           encodedString: ${{ secrets.MACOS_CERTIFICATE }}
 
       - name: Codesign executable
-        with:
-          filelocation: ${{ steps.write_file.outputs.filePath }}
         env: 
+          CERTIFICATE_P12: ${{ steps.write_file.outputs.filePath }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
         run: |
-          echo $filelocation
-          cp $filelocation ./certificate.p12
+          echo $CERTIFICATE_P12
+          cp $CERTIFICATE_P12 ./certificate.p12
           security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain security default-keychain -s build.keychain
           security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
           security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
