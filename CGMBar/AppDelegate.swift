@@ -205,29 +205,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let direction: String
     }
     
+    func showError() {
+        if let button = self.statusBarItem.button {
+            DispatchQueue.main.async {
+                if self.getBaseNightscoutUrl() == "" {
+                    button.attributedTitle = self.clr(s: "Right-click to set NS URL", c: NSColor.red)
+                } else {
+                    button.attributedTitle = self.clr(s: "Error", c: NSColor.red)
+                }
+            }
+        }
+    }
+    
     // Obtains the latest SGV reading and updates the statusbar
     @objc func updateBar() {
         print("Running updateBar")
 
-        let nsUrl = getBaseNightscoutUrl()
-        if nsUrl == "" {
-            if let button = self.statusBarItem.button {
-                DispatchQueue.main.async {
-                    button.attributedTitle = self.clr(s: "Right-click to set NS URL", c: NSColor.red)
-                    return
-                }
-            }
+        if self.getBaseNightscoutUrl() == "" {
+            showError()
+            return
         }
-
-        let url = URL(string: nsUrl + "/api/v1/entries/sgv.json?count=1")!
+        
+        let url = URL(string: getBaseNightscoutUrl() + "/api/v1/entries/sgv.json?count=1")!
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
             if error != nil {
-                if let button = self.statusBarItem.button {
-                    DispatchQueue.main.async {
-                        button.attributedTitle = self.clr(s: "Error", c: NSColor.red)
-                    }
-                }
+                self.showError()
             }
             guard let data = data else { return }
             
