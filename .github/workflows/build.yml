@@ -17,17 +17,16 @@ jobs:
       - name: Show Files
         run: find .
         
-      - name: Copy unsigned app
+      - name: Zip unsigned app
         run: |
-          mkdir $RUNNER_TEMP/unsigned_app
-          cp -r build/Release/CGMBar.app $RUNNER_TEMP/unsigned_app/
-          chmod +x $RUNNER_TEMP/unsigned_app/CGMBar.app/Contents/MacOS/CGMBar
+          chmod +x build/Release/CGMBar.app/Contents/MacOS/CGMBar
+          zip -r $RUNNER_TEMP/unsigned_app.zip build/Release/CGMBar.app 
 
       - name: Upload Unsigned app
         uses: actions/upload-artifact@v2
         with:
           name: CGMBar-unsigned
-          path: ${{ runner.temp }}/unsigned_app/
+          path: ${{ runner.temp }}/unsigned_app.zip
           
       - name: Install certificate
         env:
@@ -57,14 +56,13 @@ jobs:
           /usr/bin/codesign --force -s $CERTIFICATE_ID ./build/Release/CGMBar.app -v
 
 
-      - name: Copy signed app
+      - name: Zip signed app
         run: |
-          mkdir $RUNNER_TEMP/signed_app
-          cp -r build/Release/CGMBar.app $RUNNER_TEMP/signed_app/
-          chmod +x $RUNNER_TEMP/signed_app/CGMBar.app/Contents/MacOS/CGMBar
+          chmod +x build/Release/CGMBar.app/Contents/MacOS/CGMBar
+          zip -r $RUNNER_TEMP/signed_app.zip build/Release/CGMBar.app 
 
       - name: Upload Signed app
         uses: actions/upload-artifact@v2
         with:
           name: CGMBar-signed
-          path: ${{ runner.temp }}/signed_app/
+          path: ${{ runner.temp }}/signed_app.zip
