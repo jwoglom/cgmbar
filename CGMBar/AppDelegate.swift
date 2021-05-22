@@ -173,7 +173,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     func getBaseNightscoutUrl() -> String {
-        var pref = getPref(key: .nightscoutUrl) ?? "http://localhost"
+        var pref = getPref(key: .nightscoutUrl) ?? "invalid"
         if pref.hasSuffix("/") {
             pref.removeLast(1)
         }
@@ -198,7 +198,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Obtains the latest SGV reading and updates the statusbar
     @objc func updateBar() {
         print("Running updateBar")
-        let url = URL(string: getBaseNightscoutUrl() + "/api/v1/entries/sgv.json?count=1")!
+
+        let nsUrl = getBaseNightscoutUrl()
+        if nsUrl == "invalid" {
+            if let button = self.statusBarItem.button {
+                DispatchQueue.main.async {
+                    button.attributedTitle = self.clr(s: "No NS URL", c: NSColor.red)
+                    return
+                }
+            }
+        }
+
+        let url = URL(string: nsUrl + "/api/v1/entries/sgv.json?count=1")!
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
             guard let data = data else { return }
@@ -214,7 +225,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let button = self.statusBarItem.button {
                 DispatchQueue.main.async {
                     button.attributedTitle = title
-                    
                 }
             }
         }
