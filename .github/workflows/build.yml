@@ -20,7 +20,8 @@ jobs:
       - name: Zip unsigned app
         run: |
           chmod +x build/Release/CGMBar.app/Contents/MacOS/CGMBar
-          zip -r $RUNNER_TEMP/unsigned_app.zip build/Release/CGMBar.app 
+          cd build/Release/
+          zip -r $RUNNER_TEMP/unsigned_app.zip CGMBar.app 
 
       - name: Upload Unsigned app
         uses: actions/upload-artifact@v2
@@ -59,7 +60,8 @@ jobs:
       - name: Zip signed app
         run: |
           chmod +x build/Release/CGMBar.app/Contents/MacOS/CGMBar
-          zip -r $RUNNER_TEMP/signed_app.zip build/Release/CGMBar.app 
+          cd build/Release/
+          zip -r $RUNNER_TEMP/signed_app.zip CGMBar.app 
 
       - name: Upload Signed app
         uses: actions/upload-artifact@v2
