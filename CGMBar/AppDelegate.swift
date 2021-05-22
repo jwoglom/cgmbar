@@ -212,6 +212,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let url = URL(string: nsUrl + "/api/v1/entries/sgv.json?count=1")!
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
+            if error != nil {
+                if let button = self.statusBarItem.button {
+                    DispatchQueue.main.async {
+                        button.attributedTitle = self.clr(s: "Error", c: NSColor.red)
+                    }
+                }
+            }
             guard let data = data else { return }
             
             print(String(data: data, encoding: .utf8)!)
