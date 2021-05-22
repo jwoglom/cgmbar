@@ -28,6 +28,7 @@ jobs:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE }}
           P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          CERTIFICATE_ID: ${{ secrets.MACOS_CERTIFICATE_ID }}
         run: |
           # create variables
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
@@ -47,7 +48,7 @@ jobs:
           
           # set-key-partition-list and codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD $KEYCHAIN_PATH
-          /usr/bin/codesign --force -s $MACOS_CERTIFICATE_ID ./build/Release/CGMBar.app -v
+          /usr/bin/codesign --force -s $CERTIFICATE_ID ./build/Release/CGMBar.app -v
 
       - name: Upload Signed app
         uses: actions/upload-artifact@v1
