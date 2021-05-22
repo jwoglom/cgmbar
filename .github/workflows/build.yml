@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - main
 jobs:
   macos:
     runs-on: macos-11.0
