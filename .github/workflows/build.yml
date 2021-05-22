@@ -21,6 +21,7 @@ jobs:
         run: |
           mkdir $RUNNER_TEMP/unsigned_app
           cp -r build/Release/CGMBar.app $RUNNER_TEMP/unsigned_app/
+          chmod +x $RUNNER_TEMP/unsigned_app/CGMBar.app/Contents/MacOS/CGMBar
 
       - name: Upload Unsigned app
         uses: actions/upload-artifact@v2
@@ -60,6 +61,7 @@ jobs:
         run: |
           mkdir $RUNNER_TEMP/signed_app
           cp -r build/Release/CGMBar.app $RUNNER_TEMP/signed_app/
+          chmod +x $RUNNER_TEMP/signed_app/CGMBar.app/Contents/MacOS/CGMBar
 
       - name: Upload Signed app
         uses: actions/upload-artifact@v2
