@@ -1,0 +1,40 @@
+name: Build and Sign macOS
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  macos:
+    runs-on: macos-11.0
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build
+        run: xcodebuild
+        
+      - name: Show Files
+        run: find .
+
+      - name: Upload Unsigned app
+        uses: actions/upload-artifact@v1
+        with:
+          name: CGMBar-unsigned
+          path: build/Release/CGMBar.app
+
+      - name: Codesign executable
+        env: 
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          echo $MACOS_CERTIFICATE | base64 —decode > certificate.p12
+          security create-keychain -p $MACOS_CERTIFICATE_PWD build.keychain security default-keychain -s build.keychain
+          security unlock-keychain -p $MACOS_CERTIFICATE_PWD build.keychain
+          security import certificate.p12 -k build.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $MACOS_CERTIFICATE_PWD build.keychain
+          /usr/bin/codesign --force -s <identity-id> ./build/Release/CGMBar.app -v
+
+      - name: Upload Signed app
+        uses: actions/upload-artifact@v1
+        with:
+          name: CGMBar-signed
+          path: build/Release/CGMBar.app
