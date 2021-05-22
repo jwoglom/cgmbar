@@ -23,10 +23,10 @@ jobs:
           cp -r build/Release/CGMBar.app $RUNNER_TEMP/unsigned_app/
 
       - name: Upload Unsigned app
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2
         with:
           name: CGMBar-unsigned
-          path: $RUNNER_TEMP/unsigned_app/
+          path: ${{ runner.temp }}/unsigned_app/
           
       - name: Install certificate
         env:
@@ -62,7 +62,7 @@ jobs:
           cp -r build/Release/CGMBar.app $RUNNER_TEMP/signed_app/
 
       - name: Upload Signed app
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2
         with:
           name: CGMBar-signed
-          path: $RUNNER_TEMP/signed_app/
+          path: ${{ runner.temp }}/signed_app/
