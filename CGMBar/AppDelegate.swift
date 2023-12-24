@@ -201,8 +201,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let date: Int
         let dateString: String
         let sgv: Int
-        let delta: Double
-        let direction: String
+        let delta: Double?
+        let direction: String?
     }
     
     func showError() {
@@ -226,7 +226,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         
-        let url = URL(string: getBaseNightscoutUrl() + "/api/v1/entries/sgv.json?count=1")!
+        let url = URL(string: getBaseNightscoutUrl() + "/api/v1/entries/sgv.json?count=4")!
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
             if error != nil {
@@ -239,7 +239,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             
             print(sgvs)
             
-            let title: NSAttributedString = self.buildBarTitle(reading: sgvs[0])
+            let title: NSAttributedString = self.buildBarTitle(readings: sgvs)
             print(title)
             
             if let button = self.statusBarItem.button {
@@ -316,6 +316,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
+    func buildDirection(delta: Double) -> String {
+        if (delta <= -3.5 * 5) {
+            return "DoubleDown";
+        } else if (delta <= -2 * 5) {
+            return "SingleDown";
+        } else if (delta <= -1 * 5) {
+            return "FortyFiveDown";
+        } else if (delta <= 1 * 5) {
+            return "Flat";
+        } else if (delta <= 2 * 5) {
+            return "FortyFiveUp";
+        } else if (delta <= 3.5 * 5) {
+            return "SingleUp";
+        } else if (delta <= 40 * 5) {
+            return "DoubleUp";
+        }
+        return "NONE";
+    }
+    
     func buildDelta(delta: Double) -> String {
         let r: Int = Int(round(delta))
         if r >= 0 {
@@ -353,12 +372,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
-    func buildBarTitle(reading: SGVReading) -> NSAttributedString {
+    func buildBarTitle(readings: [SGVReading]) -> NSAttributedString {
+        let reading: SGVReading = readings[0]
+        var delta = Double(reading.delta ?? 0)
+        var direction = reading.direction ?? "NONE"
+        
+        // if delta is not present in nightscout, compute it
+        let rDevice = readings[0].device.split(separator: " ")[0];
+        let oDevice = readings[1].device.split(separator: " ")[0];
+        let nDevice = readings[2].device.split(separator: " ")[0];
+        if (reading.delta == nil) {
+            if (rDevice == oDevice) {
+                delta = Double(reading.sgv - readings[1].sgv)
+            } else if (rDevice == nDevice) {
+                delta = Double(reading.sgv - readings[2].sgv)
+            }
+        }
+        
+        if (reading.direction == nil || reading.direction == "NONE" || reading.direction == "") {
+            direction = buildDirection(delta: delta)
+        }
+        
+        return buildBarTitleString(direction: direction, deltaV: delta, reading: reading)
+    }
+    
+    func buildBarTitleString(direction: String, deltaV: Double, reading: SGVReading) -> NSAttributedString {
         let date: Date = buildDate(epoch: reading.date)
         self.lastUpdateDate = date
         
-        let arrow: String = buildArrow(direction: reading.direction)
-        let delta: String = buildDelta(delta: reading.delta)
+        let arrow: String = buildArrow(direction: direction)
+        let delta: String = buildDelta(delta: deltaV)
         let age: String = buildAge(date: date)
         
         let fmt = NSMutableAttributedString()
@@ -366,9 +409,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fmt.append(colorFromSgv(s: "\(reading.sgv)", sgv: reading.sgv))
         
         if getCheckboxSetting(pref: .statusBarShowDelta) {
-            fmt.append(colorFromDelta(s: " \(arrow) \(delta)", delta: reading.delta))
+            fmt.append(colorFromDelta(s: " \(arrow) \(delta)", delta: deltaV))
         } else {
-            fmt.append(colorFromDelta(s: " \(arrow)", delta: reading.delta))
+            fmt.append(colorFromDelta(s: " \(arrow)", delta: deltaV))
         }
         
         if shouldShowAge(date: date) {
