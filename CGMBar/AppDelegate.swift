@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     enum PreferenceField : String {
         case nightscoutUrl
+        case deviceFilter
         case statusBarShowDelta
         case statusBarAlwaysShowAge
         case statusBarUseColor
@@ -39,6 +40,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             
             settingsMenu = NSMenu(title: "Settings")
             settingsMenu.addItem(withTitle: "Set Nightscout URL", action: #selector(settingsNightscoutUrl), keyEquivalent: "")
+            settingsMenu.addItem(withTitle: "Set Device Filter", action: #selector(settingsDeviceFilter), keyEquivalent: "")
             settingsMenu.addItem(withTitle: "Show Delta", action: #selector(settingsShowDelta), keyEquivalent: "")
             settingsMenu.addItem(withTitle: "Always Show Age", action: #selector(settingsAlwaysShowAge), keyEquivalent: "")
             settingsMenu.addItem(withTitle: "Use Color", action: #selector(settingsUseColor), keyEquivalent: "")
@@ -108,6 +110,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateNightscoutCheckbox(menu: settingsMenu)
     }
     
+    @objc func settingsDeviceFilter() {
+        let retVal = askForString(title: "Settings", question: "Enter substring of reported device to filter readings for (leave empty for no filter):", defaultValue: getPref(key: .deviceFilter) ?? "")
+        if retVal != nil {
+            setPref(key: .deviceFilter, val: retVal!)
+        }
+        updateDeviceFilterCheckbox(menu: settingsMenu)
+    }
+    
     @objc func settingsShowDelta() {
         changeCheckboxSetting(pref: .statusBarShowDelta)
     }
@@ -140,6 +150,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateCheckboxSetting(menu: settingsMenu, title: "Use Color", pref: .statusBarUseColor)
         updateCheckboxSetting(menu: settingsMenu, title: "Use Green Color", pref: .statusBarUseGreenColor)
         updateNightscoutCheckbox(menu: settingsMenu)
+        updateDeviceFilterCheckbox(menu: settingsMenu)
     }
     
     func updateCheckboxSetting(menu: NSMenu, title: String, pref: PreferenceField) {
@@ -156,6 +167,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             val = NSControl.StateValue.on
         }
         menu.item(withTitle: "Set Nightscout URL")?.state = val
+    }
+    
+    func updateDeviceFilterCheckbox(menu: NSMenu) {
+        var val = NSControl.StateValue.off
+        if getDeviceFilter() != "" {
+            val = NSControl.StateValue.on
+        }
+        menu.item(withTitle: "Set Device Filter")?.state = val
     }
     
     func getCheckboxSetting(pref: PreferenceField) -> Bool {
@@ -193,6 +212,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         
         return pref
+    }
+    
+    func getDeviceFilter() -> String {
+        return getPref(key: .deviceFilter) ?? ""
     }
     
     struct SGVReading: Decodable {
@@ -239,7 +262,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             
             print(sgvs)
             
-            let title: NSAttributedString = self.buildBarTitle(readings: sgvs)
+            let filteredSgvs: [SGVReading] = self.filterSgvs(readings: sgvs, deviceFilter: self.getDeviceFilter())
+            
+            let title: NSAttributedString = self.buildBarTitle(readings: filteredSgvs)
             print(title)
             
             if let button = self.statusBarItem.button {
@@ -372,21 +397,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
+    func matchesDeviceFilter(r: SGVReading, deviceFilter: String) -> Bool {
+        return deviceFilter == "" || r.device.contains(deviceFilter)
+    }
+    
+    func filterSgvs(readings: [SGVReading], deviceFilter: String) -> [SGVReading] {
+        var ret: [SGVReading] = [];
+        for (i, r) in readings.enumerated() {
+            if (matchesDeviceFilter(r: r, deviceFilter: deviceFilter)) {
+                ret.append(r);
+            }
+        }
+        
+        return ret
+    }
+    
     func buildBarTitle(readings: [SGVReading]) -> NSAttributedString {
         let reading: SGVReading = readings[0]
         var delta = Double(reading.delta ?? 0)
         var direction = reading.direction ?? "NONE"
         
         // if delta is not present in nightscout, compute it
-        let rDevice = readings[0].device.split(separator: " ")[0];
-        let oDevice = readings[1].device.split(separator: " ")[0];
-        let nDevice = readings[2].device.split(separator: " ")[0];
         if (reading.delta == nil) {
-            if (rDevice == oDevice) {
-                delta = Double(reading.sgv - readings[1].sgv)
-            } else if (rDevice == nDevice) {
-                delta = Double(reading.sgv - readings[2].sgv)
-            }
+            delta = Double(reading.sgv - readings[1].sgv)
         }
         
         if (reading.direction == nil || reading.direction == "NONE" || reading.direction == "") {
