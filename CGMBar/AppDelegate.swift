@@ -413,12 +413,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     func buildBarTitle(readings: [SGVReading]) -> NSAttributedString {
+        if (readings.count == 0) {
+            return NSMutableAttributedString()
+        }
         let reading: SGVReading = readings[0]
         var delta = Double(reading.delta ?? 0)
         var direction = reading.direction ?? "NONE"
         
         // if delta is not present in nightscout, compute it
-        if (reading.delta == nil) {
+        if (reading.delta == nil && readings.count >= 2) {
             delta = Double(reading.sgv - readings[1].sgv)
         }
         
