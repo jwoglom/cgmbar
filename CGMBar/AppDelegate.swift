@@ -414,7 +414,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     func buildBarTitle(readings: [SGVReading]) -> NSAttributedString {
         if (readings.count == 0) {
-            return NSMutableAttributedString()
+            let m = NSMutableAttributedString()
+            m.append(NSAttributedString(string:"UNKNOWN"))
+            return m
         }
         let reading: SGVReading = readings[0]
         var delta = Double(reading.delta ?? 0)
