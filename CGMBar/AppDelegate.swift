@@ -221,7 +221,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     struct SGVReading: Decodable {
         let _id: String
         let device: String
-        let date: Int
+        let date: Double
         let dateString: String
         let sgv: Int
         let delta: Double?
@@ -369,7 +369,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
     
-    func buildDate(epoch: Int) -> Date {
+    func buildDate(epoch: Double) -> Date {
         let date = Date(timeIntervalSince1970: TimeInterval(epoch/1000))
         return date
     }
