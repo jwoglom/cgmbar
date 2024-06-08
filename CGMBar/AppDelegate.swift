@@ -425,6 +425,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // if delta is not present in nightscout, compute it
         if (reading.delta == nil && readings.count >= 2) {
             delta = Double(reading.sgv - readings[1].sgv)
+            if (readings[1].sgv == reading.sgv && readings[1].device != reading.device && readings.count >= 3) {
+                delta = Double(reading.sgv - readings[2].sgv)
+            }
         }
         
         if (reading.direction == nil || reading.direction == "NONE" || reading.direction == "") {
