@@ -253,18 +253,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         
         let task = URLSession.shared.dataTask(with: url) {(data, response, error) in
             if error != nil {
+                print("Error returned by fetch task: \(String(describing: error))")
                 self.showError()
+                return
             }
-            guard let data = data else { return }
+            guard let data = data else {
+                print("Error fetching data: \(String(describing: data))")
+                self.showError()
+                return
+            }
             
-            print(String(data: data, encoding: .utf8)!)
-            let sgvs: [SGVReading] = try! JSONDecoder().decode([SGVReading].self, from: data)
+            print(data)
+            guard let sgvs: [SGVReading] = try? JSONDecoder().decode([SGVReading].self, from: data)
+            else {
+                print("Error decoding JSON: \(data)")
+                self.showError()
+                return
+            }
             
             print(sgvs)
             
             let filteredSgvs: [SGVReading] = self.filterSgvs(readings: sgvs, deviceFilter: self.getDeviceFilter())
             
             let title: NSAttributedString = self.buildBarTitle(readings: filteredSgvs)
+
             print(title)
             
             if let button = self.statusBarItem.button {
@@ -403,7 +415,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     func filterSgvs(readings: [SGVReading], deviceFilter: String) -> [SGVReading] {
         var ret: [SGVReading] = [];
-        for (i, r) in readings.enumerated() {
+        for (_, r) in readings.enumerated() {
             if (matchesDeviceFilter(r: r, deviceFilter: deviceFilter)) {
                 ret.append(r);
             }
@@ -425,7 +437,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // if delta is not present in nightscout, compute it
         if (reading.delta == nil && readings.count >= 2) {
             delta = Double(reading.sgv - readings[1].sgv)
-            if (readings[1].sgv == reading.sgv && readings[1].device != reading.device && readings.count >= 3) {
+            if (readings[1].sgv == reading.sgv && abs(readings[1].date - reading.date) <= 240000 && readings.count >= 3) {
                 delta = Double(reading.sgv - readings[2].sgv)
             }
         }
