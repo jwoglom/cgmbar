@@ -220,7 +220,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     
     struct SGVReading: Decodable {
         let _id: String
-        let device: String
+        let device: String?
         let date: Double
         let dateString: String
         let sgv: Int
@@ -410,7 +410,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     
     func matchesDeviceFilter(r: SGVReading, deviceFilter: String) -> Bool {
-        return deviceFilter == "" || r.device.contains(deviceFilter)
+        return deviceFilter == "" || (r.device?.contains(deviceFilter) ?? false)
     }
     
     func filterSgvs(readings: [SGVReading], deviceFilter: String) -> [SGVReading] {
