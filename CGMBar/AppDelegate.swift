@@ -439,6 +439,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             delta = Double(reading.sgv - readings[1].sgv)
             if (readings[1].sgv == reading.sgv && abs(readings[1].date - reading.date) <= 240000 && readings.count >= 3) {
                 delta = Double(reading.sgv - readings[2].sgv)
+                if (readings[2].sgv == reading.sgv && abs(readings[2].date - reading.date) <= 240000 && readings.count >= 4) {
+                    delta = Double(reading.sgv - readings[3].sgv)
+                }
             }
         }
         
